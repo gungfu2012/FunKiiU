@@ -17,10 +17,10 @@ import sys
 import zlib
 
 try:
-    from urllib.request import urlopen, Request
+    from urllib.request import urlopen
     from urllib.error import URLError, HTTPError
 except ImportError:
-    from urllib2 import urlopen, URLError, HTTPError, Request
+    from urllib2 import urlopen, URLError, HTTPError
 
 try:
     real_input = raw_input  # Python2
@@ -42,7 +42,7 @@ TK = 0x140
 parser = argparse.ArgumentParser()
 parser.add_argument('-outputdir', action='store', dest='output_dir',
                     help='The custom output directory to store output in, if desired')
-parser.add_argument('-retry', type=int, default=4, dest='retry_count',
+parser.add_argument('-retry', type=int, default=1, dest='retry_count',
                     choices=range(0, 10), help='How many times a file download will be attempted')
 parser.add_argument('-title', nargs='+', dest='titles', default=[],
                     help='Give TitleIDs to be specifically downloaded')
@@ -103,12 +103,11 @@ def progress_bar(part, total, length=10, char='#', blank=' ', left='[', right=']
     ) + ' ' * 20
 
 
-def download_file(url, outfname, retry_count=3, ignore_404=False, expected_size=None, chunk_size=0x32768):
+def download_file(url, outfname, retry_count=3, ignore_404=False, expected_size=None, chunk_size=8388608):
     print('-URL {}.'.format(url),flush=True)
-    req=Request(url)
     for _ in retry(retry_count):
         try:
-            #infile = urlopen(url)
+            infile = urlopen(url)
             # start of modified code
             if os.path.isfile(outfname):
                 statinfo = os.stat(outfname)
@@ -119,21 +118,9 @@ def download_file(url, outfname, retry_count=3, ignore_404=False, expected_size=
 
             #if not (expected_size is None):
             if expected_size != diskFilesize:
-                with open(outfname, 'wb') as outfile:
-                    if expected_size is None:
-                        diskFilesize=0
-                    outfile.seek(diskFilesize)
-                    downloaded_size = diskFilesize
-                    req.add_header('Range','bytes={}-'.format(diskFilesize))
-                    print(req.headers['Range'])
-                    infile = urlopen(req)
-                    print(infile.info(),flush=True)
-                    while True:
-                         buf = infile.read(chunk_size)
-                         if not buf:
-                             break
-                         downloaded_size += len(buf)
-                         outfile.write(buf)
+                cmd='wget -q -c -O {} {}'.format(outfname,url)
+                print(cmd,flush=True)
+                os.system(cmd)
             else:
                 print('-File skipped.')
                 downloaded_size = statinfo.st_size
@@ -144,7 +131,7 @@ def download_file(url, outfname, retry_count=3, ignore_404=False, expected_size=
                     print('Content download not correct size\n')
                     continue
                 else:
-                    print('Download complete: {}\n'.format(bytes2human(downloaded_size)) + ' ' * 40)
+                    print('Download complete: {}\n'.format(bytes2human(expected_size)) + ' ' * 40)
         except HTTPError as e:
             if e.code == 404 and ignore_404:
                 # We are ignoring this because its a 404 error, not a failure
