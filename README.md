@@ -1,5 +1,5 @@
 # FunKiiU
-add continue downloading
+add resuming download
 
 FunKiiU is a Python tool, compatible with Python 2.7 and 3, to download Wii U content from N's CDN.
 
